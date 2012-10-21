@@ -28,8 +28,7 @@
 -define(HttpServiceUnavailable,
 	"HTTP/1.0 503 Service Unavailable\r\n\r\n").
 
-start_link() -> gen_server:start_link({local, ?MODULE},
-	?MODULE, [{module, http_server_example}], []).
+start_link() -> start_link([{module, http_server_example}]).
 start_link(Args) -> gen_server:start_link({local, ?MODULE}, ?MODULE, Args, []).
 
 listen(Port) -> gen_server:call(?MODULE, {listen, Port}).
