@@ -8,13 +8,14 @@
 -module(http_reader).
 -export([read/1]).
 
-read("GET" ++ T) -> {ok, read(get, T, [])};
-read("POST" ++ T) -> {ok, read(post, T, [])};
+read("GET" ++ T) -> read(get, T, []);
+read("POST" ++ T) -> read(post, T, []);
 read(_) -> {error, method_not_allowed}.
 
 read(Method, "\r\n\r\n" ++ Body, Header) ->
-	read_data(Method, Body, lists:reverse(Header));
-read(Method, [H|T], Header) -> read(Method, T, [H|Header]).
+	{ok, read_data(Method, Body, lists:reverse(Header))};
+read(Method, [H|T], Header) -> read(Method, T, [H|Header]);
+read(_, [], _) -> {error, not_complete}.
 
 read_data(get, _Body, Header) -> read_query(read_get_data(Header), [], []);
 read_data(post, Body, _Header) -> read_query(Body, [], []).
