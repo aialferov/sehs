@@ -8,7 +8,7 @@
 -module(http_server).
 -behaviour(gen_server).
 
--export([start_link/0]).
+-export([start_link/0, start_link/1]).
 -export([callback/1]).
 -export([listen/1, close/0]).
 
@@ -37,12 +37,21 @@ end).
 	"HTTP/1.0 503 Service Unavailable\r\n\r\n").
 
 start_link() -> gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
+start_link(Args) -> gen_server:start_link({local, ?MODULE}, ?MODULE, Args, []).
 
 callback(Module) -> gen_server:call(?MODULE, {callback, Module}).
+
 listen(Port) -> gen_server:call(?MODULE, {listen, Port}).
 close() -> gen_server:call(?MODULE, close).
 
-init([]) -> process_flag(trap_exit, true), {ok, []}.
+init([]) -> process_flag(trap_exit, true), {ok, []};
+init([{config, FileName}, {callback, Module}]) ->
+	process_flag(trap_exit, true),
+	{ok, Config} = file:consult(FileName),
+	{listen, {port, Port}} = lists:keyfind(listen, 1, Config),
+	{ok, LSocket} = gen_tcp:listen(Port, ?ListenOptions),
+	spawn_accept(Module, LSocket),
+	{ok, [{module, Module}, {lsocket, LSocket}]}.
 
 handle_call({callback, Module}, _From, [_OldModule, LSocket]) ->
 	{reply, ok, [{module, Module}, LSocket]};
