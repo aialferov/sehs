@@ -17,25 +17,6 @@
 
 -define(ListenOptions, [{reuseaddr, true}]).
 
--define(HttpOK(Response),
-	"HTTP/1.0 200 OK\r\n" ++
-	"Content-Type: text/plain; charset=\"utf-8\"\r\n" ++
-	"\r\n" ++ Response ++ "\r\n"
-).
--define(HttpError(Reason), case Reason of
-	bad_request -> ?HttpBadRequest;
-	method_not_allowed -> ?HttpMethodNotAllowed;
-	service_unavailable -> ?HttpServiceUnavailable
-end).
--define(HttpBadRequest,
-	"HTTP/1.0 400 Bad Request\r\n\r\n").
--define(HttpMethodNotAllowed,
-	"HTTP/1.0 405 Method Not Allowed\r\n" ++
-	"Allow: GET, POST\r\n\r\n"
-).
--define(HttpServiceUnavailable,
-	"HTTP/1.0 503 Service Unavailable\r\n\r\n").
-
 start_link() -> gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
 start_link(Args) -> gen_server:start_link({local, ?MODULE}, ?MODULE, Args, []).
 
@@ -91,36 +72,5 @@ terminate(Reason, _State) ->
 
 code_change(_OldVsn, State, _Extra) -> {ok, State}.
 
-spawn_accept(RequestHandler, LSocket) ->
-	proc_lib:spawn_link(fun() -> accept(RequestHandler, LSocket) end).
-
-accept(RequestHandler, LSocket) ->
-	{ok, Socket} = gen_tcp:accept(LSocket),
-	gen_server:cast(?MODULE, accept),
-	wait_data(RequestHandler, Socket).
-
-wait_data(RequestHandler, Socket) -> receive
-	{tcp, Socket, Data} ->
-%		io:format("Data: ~p~n", [Data]),
-%		io:format("Read: ~p~n", [http_reader:read(
-%			Data, {fun wait_more_data/1, Socket})]),
-		handle_result(RequestHandler, Socket, request,
-			http_reader:read(Data, {fun wait_more_data/1, Socket})),
-		ok = gen_tcp:close(Socket);
-	{tcp_closed, Socket} -> io:format("TCP closed~n", []);
-	{tcp_error, Socket, Reason} -> io:format("TCP error: ~p~n", [Reason])
-end.
-
-wait_more_data(Socket) -> receive
-	{tcp, Socket, MoreData} -> {ok, MoreData};
-	{tcp_closed, Socket} -> {error, no_more_data};
-	{tcp_error, Socket, _Reason} -> {error, no_more_data}
-end.
-
-handle_result(RequestHandler, Socket, request, {ok, Request}) ->
-	handle_result(RequestHandler, Socket, response,
-		RequestHandler:handle_request(Request));
-handle_result(_RequestHandler, Socket, response, {ok, Response}) ->
-	gen_tcp:send(Socket, ?HttpOK(Response));
-handle_result(_RequestHandler, Socket, _Result, {error, Reason}) ->
-	gen_tcp:send(Socket, ?HttpError(Reason)).
+spawn_accept(RequestHandler, LSocket) -> proc_lib:spawn_link(
+	fun() -> http_handler:accept(?MODULE, RequestHandler, LSocket) end).
