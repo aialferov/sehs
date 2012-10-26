@@ -6,6 +6,7 @@
 %%%-------------------------------------------------------------------
 
 -module(http_server_example).
--export([handle_query/1]).
+-export([handle_request/1]).
 
-handle_query(Query) -> io:format("Query: ~p~n", [Query]), {ok, "OK"}.
+handle_request({Path, Query}) ->
+	io:format("Path: ~p~nQuery: ~p~n", [Path, Query]), {ok, "OK"}.

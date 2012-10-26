@@ -102,7 +102,7 @@ wait_data(Module, Socket) -> receive
 %		io:format("Data: ~p~n", [Data]),
 %		io:format("Read: ~p~n", [http_reader:read(
 %			Data, {fun wait_more_data/1, Socket})]),
-		handle_result(Module, Socket, 'query', http_reader:read(
+		handle_result(Module, Socket, request, http_reader:read(
 			Data, {fun wait_more_data/1, Socket})),
 		ok = gen_tcp:close(Socket);
 	{tcp_closed, Socket} -> io:format("TCP closed~n", []);
@@ -115,8 +115,8 @@ wait_more_data(Socket) -> receive
 	{tcp_error, Socket, _Reason} -> {error, no_more_data}
 end.
 
-handle_result(Module, Socket, 'query', {ok, Query}) ->
-	handle_result(Module, Socket, response, Module:handle_query(Query));
+handle_result(Module, Socket, request, {ok, Request}) ->
+	handle_result(Module, Socket, response, Module:handle_request(Request));
 handle_result(_Module, Socket, response, {ok, Response}) ->
 	gen_tcp:send(Socket, ?HttpOK(Response));
 handle_result(_Module, Socket, _Result, {error, Reason}) ->

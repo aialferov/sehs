@@ -21,8 +21,8 @@ read({request_line_incomplete, Rest, Item, RequestLine}, ContFun) ->
 
 read({{request_line, {"GET", RequestUri, _}}, {header, _, _}}, _ContFun) ->
 	read(read_request_uri(RequestUri, []));
-read({{request_line, {"POST", _, _}}, {header, _, Rest}}, _ContFun) ->
-	{ok, read_query(Rest, [], [])};
+read({{request_line, {"POST", RequestUri, _}}, {header, _, Rest}}, _ContFun) ->
+	{ok, {RequestUri, read_query(Rest, [], [])}};
 read({{request_line, _}, {header, _, _}}, _ContFun) ->
 	{error, method_not_allowed};
 read({RequestLine = {request_line, _},
@@ -31,8 +31,8 @@ read({RequestLine = {request_line, _},
 	read_cont(fun(MoreData) -> read({RequestLine, read_header(
 		[Rest|MoreData], Item, Header)}, ContFun) end, ContFun).
 
-read({request_uri, _Path}) -> {ok, []};
-read({request_uri, _Path, Query}) -> {ok, Query}.
+read({request_uri, Path}) -> {ok, {Path, []}};
+read({request_uri, Path, Query}) -> {ok, {Path, Query}}.
 
 read_cont(ReadFun, {ContFun, Arg}) -> case ContFun(Arg) of
 	{ok, MoreData} -> ReadFun(MoreData);
