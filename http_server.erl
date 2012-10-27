@@ -15,7 +15,8 @@
 -export([init/1, terminate/2, code_change/3]).
 -export([handle_call/3, handle_cast/2, handle_info/2]).
 
--define(ListenOptions, [{reuseaddr, true}]).
+-define(ListenOptions, [{reuseaddr, true}, {backlog, 5}]).
+-define(AcceptsNumber, 16).
 
 start_link() -> gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
 start_link(Args) -> gen_server:start_link({local, ?MODULE}, ?MODULE, Args, []).
@@ -44,7 +45,8 @@ handle_call({listen, _}, _From, []) ->
 handle_call({listen, Port}, _From, State = [{request_handler, Module}]) ->
 	case gen_tcp:listen(Port, ?ListenOptions) of
 		{ok, LSocket} ->
-			spawn_accept(Module, LSocket),
+			[spawn_accept(Module, LSocket) ||
+				_ <- lists:seq(1, ?AcceptsNumber)],
 			{reply, ok, [{request_handler, Module}, {lsocket, LSocket}]};
 		Error -> {reply, Error, State}
 	end;
