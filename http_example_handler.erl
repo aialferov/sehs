@@ -2,11 +2,10 @@
 %%% @author Anton I Alferov <casper@ubca-dp>
 %%% @copyright (C) 2012, Anton I Alferov
 %%%
-%%% Created : 21 Oct 2012 by Anton I Alferov <casper@ubca-dp>
+%%% Created : 27 Oct 2012 by Anton I Alferov <casper@ubca-dp>
 %%%-------------------------------------------------------------------
 
--module(http_server_example).
+-module(http_example_handler).
 -export([handle_request/1]).
 
-handle_request({Path, Query}) ->
-	io:format("Path: ~p~nQuery: ~p~n", [Path, Query]), {ok, "OK"}.
+handle_request(_) -> {ok, "OK"}.
