@@ -15,15 +15,21 @@
 ).
 -define(HttpError(Reason), case Reason of
 	bad_request -> ?HttpBadRequest;
+	not_found -> ?HttpNotFound;
 	method_not_allowed -> ?HttpMethodNotAllowed;
+	internal_server_error -> ?HttpInternalServerError;
 	service_unavailable -> ?HttpServiceUnavailable
 end).
 -define(HttpBadRequest,
 	"HTTP/1.0 400 Bad Request\r\n\r\n").
+-define(HttpNotFound,
+	"HTTP/1.0 404 Not Found\r\n\r\n").
 -define(HttpMethodNotAllowed,
 	"HTTP/1.0 405 Method Not Allowed\r\n" ++
 	"Allow: GET, POST\r\n\r\n"
 ).
+-define(HttpInternalServerError,
+	"HTTP/1.0 500 Internal Server Error\r\n\r\n").
 -define(HttpServiceUnavailable,
 	"HTTP/1.0 503 Service Unavailable\r\n\r\n").
 
