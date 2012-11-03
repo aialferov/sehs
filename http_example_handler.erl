@@ -8,4 +8,4 @@
 -module(http_example_handler).
 -export([handle_request/1]).
 
-handle_request(_) -> {ok, "OK"}.
+handle_request(Request) -> io:format("Request: ~p~n", [Request]), {ok, "OK"}.
