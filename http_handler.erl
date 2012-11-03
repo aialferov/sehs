@@ -34,9 +34,12 @@ end).
 	"HTTP/1.0 503 Service Unavailable\r\n\r\n").
 
 accept(HttpServer, RequestHandler, LSocket) ->
-	{ok, Socket} = gen_tcp:accept(LSocket),
-	gen_server:cast(HttpServer, accept),
-	wait_data(RequestHandler, Socket).
+	case gen_tcp:accept(LSocket) of
+		{ok, Socket} ->
+			gen_server:cast(HttpServer, accept),
+			wait_data(RequestHandler, Socket);
+		{error, closed} -> io:format("TCP closed~n", [])
+	end.
 
 wait_data(RequestHandler, Socket) -> receive
 	{tcp, Socket, Data} ->
