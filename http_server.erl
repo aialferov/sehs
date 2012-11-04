@@ -29,7 +29,10 @@ close() -> gen_server:call(?MODULE, close).
 init([]) -> process_flag(trap_exit, true), {ok, []};
 init([{config, FileName}, {request_handler, Module}]) ->
 	init([]),
-	{ok, Config} = file:consult(FileName),
+	{ok, Config} = file:consult(case filename:pathtype(FileName) of
+		absolute -> FileName;
+		relative -> filename:dirname(code:which(?MODULE)) ++ "/" ++ FileName
+	end),
 	{listen, {port, Port}} = lists:keyfind(listen, 1, Config),
 	{ok, LSocket} = gen_tcp:listen(Port, ?ListenOptions),
 	{ok, [{request_handler, Module}, {listen, LSocket,
