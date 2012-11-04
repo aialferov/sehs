@@ -8,8 +8,10 @@
 -module(http_handler).
 -export([accept/3]).
 
+-define(Server, "Server: " ++ app_key(id) ++ "/" ++ app_key(vsn) ++ "\r\n").
+
 -define(HttpOK(Response),
-	"HTTP/1.0 200 OK\r\n" ++
+	"HTTP/1.0 200 OK\r\n" ++ ?Server ++
 	"Content-Type: text/plain; charset=\"utf-8\"\r\n" ++
 	"\r\n" ++ Response ++ "\r\n"
 ).
@@ -21,17 +23,17 @@
 	service_unavailable -> ?HttpServiceUnavailable
 end).
 -define(HttpBadRequest,
-	"HTTP/1.0 400 Bad Request\r\n\r\n").
+	"HTTP/1.0 400 Bad Request\r\n" ++ ?Server ++ "\r\n").
 -define(HttpNotFound,
-	"HTTP/1.0 404 Not Found\r\n\r\n").
+	"HTTP/1.0 404 Not Found\r\n" ++ ?Server ++ "\r\n").
 -define(HttpMethodNotAllowed,
-	"HTTP/1.0 405 Method Not Allowed\r\n" ++
+	"HTTP/1.0 405 Method Not Allowed\r\n" ++ ?Server ++
 	"Allow: GET, POST\r\n\r\n"
 ).
 -define(HttpInternalServerError,
-	"HTTP/1.0 500 Internal Server Error\r\n\r\n").
+	"HTTP/1.0 500 Internal Server Error\r\n" ++ ?Server ++ "\r\n").
 -define(HttpServiceUnavailable,
-	"HTTP/1.0 503 Service Unavailable\r\n\r\n").
+	"HTTP/1.0 503 Service Unavailable\r\n" ++ ?Server ++ "\r\n").
 
 accept(HttpServer, RequestHandler, LSocket) ->
 	case gen_tcp:accept(LSocket) of
@@ -68,3 +70,10 @@ handle_result(_RequestHandler, Socket, response, {ok, Response}) ->
 	gen_tcp:send(Socket, ?HttpOK(Response));
 handle_result(_RequestHandler, Socket, _Result, {error, Reason}) ->
 	gen_tcp:send(Socket, ?HttpError(Reason)).
+
+app_key(Key) -> case application:get_application() of
+	{ok, Application} ->
+		case application:get_key(Application, Key) of
+			{ok, Value} -> Value; undefined -> [] end;
+	undefined -> []
+end.
