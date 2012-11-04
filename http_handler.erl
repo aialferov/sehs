@@ -42,6 +42,8 @@ accept(HttpServer, RequestHandler, LSocket) ->
 	end.
 
 wait_data(RequestHandler, Socket) -> receive
+	{request_handler, NewRequestHandler} ->
+		wait_data(NewRequestHandler, Socket);
 	{tcp, Socket, Data} ->
 %		io:format("Data: ~p~n", [Data]),
 %		io:format("Read: ~p~n", [http_reader:read(

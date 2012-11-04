@@ -28,15 +28,18 @@ close() -> gen_server:call(?MODULE, close).
 
 init([]) -> process_flag(trap_exit, true), {ok, []};
 init([{config, FileName}, {request_handler, Module}]) ->
-	process_flag(trap_exit, true),
+	init([]),
 	{ok, Config} = file:consult(FileName),
 	{listen, {port, Port}} = lists:keyfind(listen, 1, Config),
 	{ok, LSocket} = gen_tcp:listen(Port, ?ListenOptions),
-	spawn_accept(Module, LSocket),
-	{ok, [{request_handler, Module}, {lsocket, LSocket}]}.
+	{ok, [{request_handler, Module}, {listen, LSocket,
+		spawn_accepts(Module, LSocket, ?AcceptsNumber)}]}.
 
-handle_call({request_handler, Module}, _From, [_RequestHandler, LSocket]) ->
-	{reply, ok, [{request_handler, Module}, LSocket]};
+handle_call({request_handler, Module}, _From,
+	[{request_handler, _}, Listen = {listen, _, Pids}]
+) ->
+	[Pid ! {request_handler, Module} || Pid <- Pids],
+	{reply, ok, [{request_handler, Module}, Listen]};
 handle_call({request_handler, Module}, _From, _State) ->
 	{reply, ok, [{request_handler, Module}]};
 
@@ -45,21 +48,21 @@ handle_call({listen, _}, _From, []) ->
 handle_call({listen, Port}, _From, State = [{request_handler, Module}]) ->
 	case gen_tcp:listen(Port, ?ListenOptions) of
 		{ok, LSocket} ->
-			[spawn_accept(Module, LSocket) ||
-				_ <- lists:seq(1, ?AcceptsNumber)],
-			{reply, ok, [{request_handler, Module}, {lsocket, LSocket}]};
+			{reply, ok, [{request_handler, Module}, {listen, LSocket,
+				spawn_accepts(Module, LSocket, ?AcceptsNumber)}]};
 		Error -> {reply, Error, State}
 	end;
 handle_call({listen, _}, _From,
-	State = [{request_handler, _}, {lsocket, _}]) ->
+	State = [{request_handler, _}, {listen, _, _}]) ->
 		{reply, {error, already_listening}, State};
 
-handle_call(close, _From, [{request_handler, Module}, {lsocket, LSocket}]) ->
+handle_call(close, _From, [{request_handler, Module}, {listen, LSocket, _}]) ->
 	{reply, gen_tcp:close(LSocket), [{request_handler, Module}]};
 handle_call(close, _From, State) -> {reply, {error, not_listening}, State}.
 
-handle_cast(accept, State = [{request_handler, Module}, {lsocket, LSocket}]) ->
-	spawn_accept(Module, LSocket), {noreply, State}.
+handle_cast(accept, State =
+	[{request_handler, Module}, {listen, LSocket, _}]) ->
+		spawn_accept(Module, LSocket), {noreply, State}.
 
 handle_info(Info, State) ->
 	io:format("Info: ~p~n", [Info]),
@@ -75,4 +78,7 @@ terminate(Reason, _State) ->
 code_change(_OldVsn, State, _Extra) -> {ok, State}.
 
 spawn_accept(RequestHandler, LSocket) -> proc_lib:spawn_link(
-	fun() -> http_handler:accept(?MODULE, RequestHandler, LSocket) end).
+	http_handler, accept, [?MODULE, RequestHandler, LSocket]).
+
+spawn_accepts(RequestHandler, LSocket, AcceptsNumber) ->
+	[spawn_accept(RequestHandler, LSocket) || _ <-lists:seq(1, AcceptsNumber)].
