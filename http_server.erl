@@ -26,17 +26,20 @@ request_handler(Module) -> gen_server:call(?MODULE, {request_handler, Module}).
 listen(Port) -> gen_server:call(?MODULE, {listen, Port}).
 close() -> gen_server:call(?MODULE, close).
 
-init([]) -> process_flag(trap_exit, true), {ok, []};
-init([{config, FileName}, {request_handler, Module}]) ->
+init([]) ->
+	process_flag(trap_exit, true), {ok, []};
+init([{config, Config}, {request_handler, Module}]) ->
 	init([]),
+	{listen, {port, Port}} = lists:keyfind(listen, 1, Config),
+	{ok, LSocket} = gen_tcp:listen(Port, ?ListenOptions),
+	{ok, [{request_handler, Module}, {listen, LSocket,
+		spawn_accepts(Module, LSocket, ?AcceptsNumber)}]};
+init([{file, FileName}, RequestHandler = {request_handler, _}]) ->
 	{ok, Config} = file:consult(case filename:pathtype(FileName) of
 		absolute -> FileName;
 		relative -> filename:dirname(code:which(?MODULE)) ++ "/" ++ FileName
 	end),
-	{listen, {port, Port}} = lists:keyfind(listen, 1, Config),
-	{ok, LSocket} = gen_tcp:listen(Port, ?ListenOptions),
-	{ok, [{request_handler, Module}, {listen, LSocket,
-		spawn_accepts(Module, LSocket, ?AcceptsNumber)}]}.
+	init([{config, Config}, RequestHandler]).
 
 handle_call({request_handler, Module}, _From,
 	[{request_handler, _}, Listen = {listen, _, Pids}]
