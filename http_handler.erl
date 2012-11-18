@@ -63,9 +63,8 @@ wait_more_data(Socket) -> receive
 	{tcp_error, Socket, _Reason} -> {error, no_more_data}
 end.
 
-handle_result(RequestHandler, Socket, request, {ok, Request}) ->
-	handle_result(RequestHandler, Socket, response,
-		RequestHandler:handle_request(Request));
+handle_result(RequestHandler = {M, F}, Socket, request, {ok, Request}) ->
+	handle_result(RequestHandler, Socket, response, M:F(Request));
 handle_result(_RequestHandler, Socket, response, {ok, Response}) ->
 	gen_tcp:send(Socket, ?HttpOK(Response));
 handle_result(_RequestHandler, Socket, _Result, {error, Reason}) ->

@@ -21,19 +21,18 @@
 start_link() -> gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
 start_link(Args) -> gen_server:start_link({local, ?MODULE}, ?MODULE, Args, []).
 
-request_handler(Module) -> gen_server:call(?MODULE, {request_handler, Module}).
+request_handler(MF) -> gen_server:call(?MODULE, {request_handler, MF}).
 
 listen(Port) -> gen_server:call(?MODULE, {listen, Port}).
 close() -> gen_server:call(?MODULE, close).
 
-init([]) ->
-	process_flag(trap_exit, true), {ok, []};
-init([{config, Config}, {request_handler, Module}]) ->
+init([]) -> process_flag(trap_exit, true), {ok, []};
+init([{config, Config}, {request_handler, RequestHandler}]) ->
 	init([]),
 	{listen, {port, Port}} = lists:keyfind(listen, 1, Config),
 	{ok, LSocket} = gen_tcp:listen(Port, ?ListenOptions),
-	{ok, [{request_handler, Module}, {listen, LSocket,
-		spawn_accepts(Module, LSocket, ?AcceptsNumber)}]};
+	{ok, [{request_handler, RequestHandler}, {listen, LSocket,
+		spawn_accepts(RequestHandler, LSocket, ?AcceptsNumber)}]};
 init([{file, FileName}, RequestHandler = {request_handler, _}]) ->
 	{ok, Config} = file:consult(case filename:pathtype(FileName) of
 		absolute -> FileName;
@@ -41,34 +40,37 @@ init([{file, FileName}, RequestHandler = {request_handler, _}]) ->
 	end),
 	init([{config, Config}, RequestHandler]).
 
-handle_call({request_handler, Module}, _From,
+handle_call(RequestHandler = {request_handler, _}, _From,
 	[{request_handler, _}, Listen = {listen, _, Pids}]
 ) ->
-	[Pid ! {request_handler, Module} || Pid <- Pids],
-	{reply, ok, [{request_handler, Module}, Listen]};
-handle_call({request_handler, Module}, _From, _State) ->
-	{reply, ok, [{request_handler, Module}]};
+	[Pid ! RequestHandler || Pid <- Pids],
+	{reply, ok, [RequestHandler, Listen]};
+handle_call(RequestHandler = {request_handler, _}, _From, _State) ->
+	{reply, ok, [RequestHandler]};
 
 handle_call({listen, _}, _From, []) ->
 	{reply, {error, no_request_handler}, []};
-handle_call({listen, Port}, _From, State = [{request_handler, Module}]) ->
+handle_call({listen, Port}, _From,
+	State = [{request_handler, RequestHandler}]
+) ->
 	case gen_tcp:listen(Port, ?ListenOptions) of
 		{ok, LSocket} ->
-			{reply, ok, [{request_handler, Module}, {listen, LSocket,
-				spawn_accepts(Module, LSocket, ?AcceptsNumber)}]};
+			{reply, ok, [{request_handler, RequestHandler}, {listen, LSocket,
+				spawn_accepts(RequestHandler, LSocket, ?AcceptsNumber)}]};
 		Error -> {reply, Error, State}
 	end;
 handle_call({listen, _}, _From,
 	State = [{request_handler, _}, {listen, _, _}]) ->
 		{reply, {error, already_listening}, State};
 
-handle_call(close, _From, [{request_handler, Module}, {listen, LSocket, _}]) ->
-	{reply, gen_tcp:close(LSocket), [{request_handler, Module}]};
+handle_call(close, _From,
+	[RequestHandler = {request_handler, _}, {listen, LSocket, _}]) ->
+		{reply, gen_tcp:close(LSocket), [RequestHandler]};
 handle_call(close, _From, State) -> {reply, {error, not_listening}, State}.
 
-handle_cast(accept, State =
-	[{request_handler, Module}, {listen, LSocket, _}]) ->
-		spawn_accept(Module, LSocket), {noreply, State}.
+handle_cast(accept,
+	State = [{request_handler, RequestHandler}, {listen, LSocket, _}]) ->
+		spawn_accept(RequestHandler, LSocket), {noreply, State}.
 
 handle_info(Info, State) ->
 	io:format("Info: ~p~n", [Info]),
