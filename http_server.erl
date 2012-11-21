@@ -34,10 +34,7 @@ init([{config, Config}, {request_handler, RequestHandler}]) ->
 	{ok, [{request_handler, RequestHandler}, {listen, LSocket,
 		spawn_accepts(RequestHandler, LSocket, ?AcceptsNumber)}]};
 init([{file, FileName}, RequestHandler = {request_handler, _}]) ->
-	{ok, Config} = file:consult(case filename:pathtype(FileName) of
-		absolute -> FileName;
-		relative -> filename:dirname(code:which(?MODULE)) ++ "/" ++ FileName
-	end),
+	{ok, Config} = file:consult(utils:filepath(FileName, ?MODULE)),
 	init([{config, Config}, RequestHandler]).
 
 handle_call(RequestHandler = {request_handler, _}, _From,
