@@ -69,16 +69,11 @@ handle_cast(accept,
 	State = [{request_handler, RequestHandler}, {listen, LSocket, _}]) ->
 		spawn_accept(RequestHandler, LSocket), {noreply, State}.
 
-handle_info(Info, State) ->
-	io:format("Info: ~p~n", [Info]),
-	{noreply, State}.
+handle_info(_Info, State) -> {noreply, State}.
 
-terminate(Reason, [{request_handler, _}, {lsocket, LSocket}]) ->
-	io:format("Terminate: ~p~n", [Reason]),
+terminate(_Reason, [{request_handler, _}, {lsocket, LSocket}]) ->
 	gen_tcp:close(LSocket);
-terminate(Reason, _State) ->
-	io:format("Terminate: ~p~n", [Reason]),
-	ok.
+terminate(_Reason, _State) -> ok.
 
 code_change(_OldVsn, State, _Extra) -> {ok, State}.
 
