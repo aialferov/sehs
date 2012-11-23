@@ -47,9 +47,6 @@ wait_data(RequestHandler, Socket) -> receive
 	{request_handler, NewRequestHandler} ->
 		wait_data(NewRequestHandler, Socket);
 	{tcp, Socket, Data} ->
-%		io:format("Data: ~p~n", [Data]),
-%		io:format("Read: ~p~n", [http_reader:read(
-%			Data, {fun wait_more_data/1, Socket})]),
 		handle_result(RequestHandler, Socket, request,
 			http_reader:read(Data, {fun wait_more_data/1, Socket})),
 		ok = gen_tcp:close(Socket);
