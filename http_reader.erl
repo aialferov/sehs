@@ -8,6 +8,8 @@
 -module(http_reader).
 -export([read/2]).
 
+-define(ContentLengthField, "Content-Length").
+
 read(Request, ContFun) when is_list(Request) ->
 	read(read_request_line(Request, [], []), ContFun);
 
@@ -17,22 +19,40 @@ read({request_line, RequestLine, Rest}, ContFun) ->
 	read({{request_line, RequestLine}, read_header(Rest, [], [])}, ContFun);
 read({request_line_incomplete, Rest, Item, RequestLine}, ContFun) ->
 	read_cont(fun(MoreData) -> read(read_request_line(
-		[Rest|MoreData], Item, RequestLine), ContFun) end, ContFun);
+		Rest ++ MoreData, Item, RequestLine), ContFun) end, ContFun);
 
 read({{request_line, {"GET", RequestUri, _}}, {header, _, _}}, _ContFun) ->
 	read(read_request_uri(RequestUri, []));
-read({{request_line, {"POST", RequestUri, _}}, {header, _, Rest}}, _ContFun) ->
-	{ok, {RequestUri, read_query(Rest, [], [])}};
+read({{request_line, {"POST", RequestUri, _}},
+	{header, Header, Rest}}, ContFun)
+->
+	{ok, {RequestUri, read_post(Header, Rest, ContFun)}};
 read({{request_line, _}, {header, _, _}}, _ContFun) ->
 	{error, method_not_allowed};
 read({RequestLine = {request_line, _},
 	{header_incomplete, Rest, Item, Header}}, ContFun
 ) ->
 	read_cont(fun(MoreData) -> read({RequestLine, read_header(
-		[Rest|MoreData], Item, Header)}, ContFun) end, ContFun).
+		Rest ++ MoreData, Item, Header)}, ContFun) end, ContFun).
 
 read({request_uri, Path}) -> {ok, {Path, []}};
 read({request_uri, Path, Query}) -> {ok, {Path, Query}}.
+
+read_post(Header, Body, ContFun) when is_list(Header) ->
+	read_post(lists:keyfind(?ContentLengthField, 1, Header), Body, ContFun);
+read_post({_, ContentLength}, Body, ContFun) ->
+	read_post(list_to_integer(ContentLength), Body,
+		byte_size(list_to_binary(Body)), ContFun);
+read_post(false, Body, _ContFun) -> read_query(Body, [], []).
+
+read_post(ContentLength, Body, BodySize, ContFun)
+	when ContentLength > BodySize
+->
+	read_cont(fun(MoreData) -> NewBody = Body ++ MoreData, read_post(
+		ContentLength, NewBody, byte_size(list_to_binary(NewBody)), ContFun)
+	end, ContFun);
+read_post(_ContentLength, Body, _BodySize, ContFun) ->
+	read_post(false, Body, ContFun).
 
 read_cont(ReadFun, {ContFun, Arg}) -> case ContFun(Arg) of
 	{ok, MoreData} -> ReadFun(MoreData);
