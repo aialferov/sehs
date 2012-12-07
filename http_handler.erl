@@ -6,7 +6,7 @@
 %%%-------------------------------------------------------------------
 
 -module(http_handler).
--export([accept/3]).
+-export([accept/4]).
 
 -define(Server, "Server: " ++ app_key(id) ++ "/" ++ app_key(vsn) ++ "\r\n").
 
@@ -35,18 +35,19 @@ end).
 -define(HttpServiceUnavailable,
 	"HTTP/1.0 503 Service Unavailable\r\n" ++ ?Server ++ "\r\n").
 
-accept(HttpServer, RequestHandler, LSocket) ->
+accept(HttpServer, RequestHandler, LogHandler, LSocket) ->
 	case gen_tcp:accept(LSocket) of
 		{ok, Socket} ->
 			gen_server:cast(HttpServer, accept),
-			wait_data(RequestHandler, Socket);
+			wait_data(RequestHandler, LogHandler, Socket);
 		{error, closed} -> io:format("TCP closed~n", [])
 	end.
 
-wait_data(RequestHandler, Socket) -> receive
+wait_data(RequestHandler, LogHandler = {Logger, Report}, Socket) -> receive
 	{request_handler, NewRequestHandler} ->
-		wait_data(NewRequestHandler, Socket);
+		wait_data(NewRequestHandler, LogHandler, Socket);
 	{tcp, Socket, Data} ->
+		Logger:Report(?RequestLog(Data)),
 		handle_result(RequestHandler, Socket, request,
 			http_reader:read(Data, {fun wait_more_data/1, Socket})),
 		ok = gen_tcp:close(Socket);
@@ -60,16 +61,15 @@ wait_more_data(Socket) -> receive
 	{tcp_error, Socket, _Reason} -> {error, no_more_data}
 end.
 
-handle_result(RequestHandler = {M, F}, Socket, request, {ok, Request}) ->
-	handle_result(RequestHandler, Socket, response, M:F(Request));
-handle_result(_RequestHandler, Socket, response, {ok, Response}) ->
+handle_result({RequestHandler, Handle}, Socket, request, {ok, Request}) ->
+	handle_result(ok, Socket, response, RequestHandler:Handle(Request));
+handle_result(_, Socket, response, {ok, Response}) ->
 	gen_tcp:send(Socket, ?HttpOK(Response));
-handle_result(_RequestHandler, Socket, _Result, {error, Reason}) ->
+handle_result(_, Socket, _, {error, Reason}) ->
 	gen_tcp:send(Socket, ?HttpError(Reason)).
 
-app_key(Key) -> case application:get_application() of
-	{ok, Application} ->
-		case application:get_key(Application, Key) of
-			{ok, Value} -> Value; undefined -> [] end;
-	undefined -> []
-end.
+app_key(Key) -> app_key(application:get_application(), {key, Key}).
+app_key({ok, Application}, {key, Key}) ->
+	app_key(application:get_key(Application, Key), ok);
+app_key({ok, Value}, ok) -> Value;
+app_key(undefined, _) -> [].
