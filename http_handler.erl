@@ -8,6 +8,8 @@
 -module(http_handler).
 -export([accept/4]).
 
+-include("http_server_logs.hrl").
+
 -define(Server, "Server: " ++ app_key(id) ++ "/" ++ app_key(vsn) ++ "\r\n").
 
 -define(HttpOK(Response),
@@ -48,25 +50,34 @@ wait_data(RequestHandler, LogHandler = {Logger, Report}, Socket) -> receive
 		wait_data(NewRequestHandler, LogHandler, Socket);
 	{tcp, Socket, Data} ->
 		Logger:Report(?RequestLog(Data)),
-		handle_result(RequestHandler, Socket, request,
-			http_reader:read(Data, {fun wait_more_data/1, Socket})),
+		WaitMoreDataFun = {fun wait_more_data/1, {LogHandler, Socket}},
+		handle_result(RequestHandler, LogHandler, Socket,
+			request, http_reader:read(Data, WaitMoreDataFun)),
 		ok = gen_tcp:close(Socket);
 	{tcp_closed, Socket} -> io:format("TCP closed~n", []);
 	{tcp_error, Socket, Reason} -> io:format("TCP error: ~p~n", [Reason])
 end.
 
-wait_more_data(Socket) -> receive
-	{tcp, Socket, MoreData} -> {ok, MoreData};
+wait_more_data({{Logger, Report}, Socket}) -> receive
+	{tcp, Socket, MoreData} ->
+		Logger:Report(?MoreDataLog(MoreData)), {ok, MoreData};
 	{tcp_closed, Socket} -> {error, no_more_data};
 	{tcp_error, Socket, _Reason} -> {error, no_more_data}
 end.
 
-handle_result({RequestHandler, Handle}, Socket, request, {ok, Request}) ->
-	handle_result(ok, Socket, response, RequestHandler:Handle(Request));
-handle_result(_, Socket, response, {ok, Response}) ->
-	gen_tcp:send(Socket, ?HttpOK(Response));
-handle_result(_, Socket, _, {error, Reason}) ->
-	gen_tcp:send(Socket, ?HttpError(Reason)).
+handle_result({RequestHandler, Handle},
+	LogHandler, Socket, request, {ok, Request})
+->
+	handle_result(ok, LogHandler, Socket,
+		response, RequestHandler:Handle(Request));
+handle_result(_, LogHandler, Socket, response, {ok, Response}) ->
+	respond(LogHandler, Socket, ?HttpOK(Response));
+handle_result(_, LogHandler, Socket, _, {error, Reason}) ->
+	respond(LogHandler, Socket, ?HttpError(Reason)).
+
+respond({Logger, Report}, Socket, Response) ->
+	Logger:Report(?ResponseLog(Response)),
+	gen_tcp:send(Socket, Response).
 
 app_key(Key) -> app_key(application:get_application(), {key, Key}).
 app_key({ok, Application}, {key, Key}) ->

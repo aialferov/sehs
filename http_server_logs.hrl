@@ -6,4 +6,7 @@
 %%%-------------------------------------------------------------------
 
 -define(ListenLog(Port), "listen on " ++ integer_to_list(Port)).
--define(RequestLog(Data), Data).
+
+-define(MoreDataLog(Data), Data).
+-define(RequestLog(Request), Request).
+-define(ResponseLog(Response), Response).
