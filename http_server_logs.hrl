@@ -7,6 +7,7 @@
 
 -define(ListenLog(Port), "listen on " ++ integer_to_list(Port)).
 
--define(MoreDataLog(Data), Data).
--define(RequestLog(Request), Request).
--define(ResponseLog(Response), Response).
+-define(MoreDataLog(Data), pid_to_list(self()) ++ " [REQP] " ++ Data).
+-define(RequestLog(Request), pid_to_list(self()) ++ " [REQ] " ++ Request).
+-define(ResponseLog(Response),
+	pid_to_list(self()) ++ " [RSP] " ++ Response).
