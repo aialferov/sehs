@@ -34,13 +34,13 @@ init([{config, Config},
 	process_flag(trap_exit, true),
 	{Logger, Report, LogFile} = LogHandler,
 	{listen, {port, Port}} = lists:keyfind(listen, 1, Config),
-	{log_file, LogFileName} = lists:keyfind(log_file, 1, Config),
+	{logging, {file, LogFileName}} = lists:keyfind(logging, 1, Config),
 	{ok, LSocket} = gen_tcp:listen(Port, ?ListenOptions),
 	ok = Logger:LogFile(LogFileName),
 	ok = Logger:Report(?ListenLog(Port)),
 	{ok, [RequestHandler, {Logger, Report}, {LSocket, spawn_accepts(
 		RequestHandler, {Logger, Report}, LSocket, ?AcceptsNumber)}]};
-init([{file, FileName},
+init([{config_file, FileName},
 	RequestHandler = {request_handler,_}, LogHandler = {log_handler, _}])
 ->
 	{ok, Config} = file:consult(utils:filepath(FileName, ?MODULE)),
