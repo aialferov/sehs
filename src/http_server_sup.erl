@@ -11,9 +11,9 @@
 -export([start_link/1]).
 -export([init/1]).
 
-start_link(Args) -> supervisor:start_link({local, ?MODULE}, ?MODULE, Args).
+start_link(Args) -> supervisor:start_link(?MODULE, Args).
 
 init(Args) -> {ok, {{one_for_one, 1, 10}, [
 	{http_server, {http_server, start_link, [Args]},
-		permanent, 30000, worker, [http_server]}
+		permanent, infinity, worker, [http_server]}
 ]}}.
