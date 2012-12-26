@@ -9,7 +9,7 @@
 -behaviour(gen_server).
 
 -export([start_link/1]).
--export([request_handler/1]).
+-export([set_request_handler/1]).
 -export([listen/1, close/0]).
 
 -export([init/1, terminate/2, code_change/3]).
@@ -22,8 +22,8 @@
 
 start_link(Args) -> gen_server:start_link({local, ?MODULE}, ?MODULE, Args, []).
 
-request_handler(Handler) ->
-	gen_server:call(?MODULE, {request_handler, Handler}).
+set_request_handler(Handler) ->
+	gen_server:call(?MODULE, {set_request_handler, Handler}).
 
 listen(Port) -> gen_server:call(?MODULE, {listen, Port}).
 close() -> gen_server:call(?MODULE, close).
@@ -32,11 +32,11 @@ init([{config, Config},
 	{request_handler, RequestHandler}, {log_handler, LogHandler}])
 ->
 	process_flag(trap_exit, true),
-	{Logger, Report, LogFile} = LogHandler,
+	{Logger, Report, SetLogFile} = LogHandler,
 	{listen, {port, Port}} = lists:keyfind(listen, 1, Config),
 	{logging, {file, LogFileName}} = lists:keyfind(logging, 1, Config),
 	{ok, LSocket} = gen_tcp:listen(Port, ?ListenOptions),
-	ok = Logger:LogFile(LogFileName),
+	ok = Logger:SetLogFile(LogFileName),
 	ok = Logger:Report(?ListenLog(Port)),
 	{ok, [RequestHandler, {Logger, Report}, {LSocket, spawn_accepts(
 		RequestHandler, {Logger, Report}, LSocket, ?AcceptsNumber)}]};
@@ -46,12 +46,12 @@ init([{config_file, FileName},
 	{ok, Config} = file:consult(utils:filepath(FileName, ?MODULE)),
 	init([{config, Config}, RequestHandler, LogHandler]).
 
-handle_call({request_handler, RequestHandler}, _From,
+handle_call({set_request_handler, RequestHandler}, _From,
 	[_OldRequestHandler, LogHandler, Listen = {_LSocket, Pids}])
 ->
-	[Pid ! {request_handler, RequestHandler} || Pid <- Pids],
+	[Pid ! {set_request_handler, RequestHandler} || Pid <- Pids],
 	{reply, ok, [RequestHandler, LogHandler, Listen]};
-handle_call({request_handler, RequestHandler}, _From,
+handle_call({set_request_handler, RequestHandler}, _From,
 	[{_OldRequestHandler}, LogHandler, not_listening])
 ->
 	{reply, ok, [RequestHandler, LogHandler, not_listening]};

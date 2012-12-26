@@ -46,7 +46,7 @@ accept(HttpServer, RequestHandler, LogHandler, LSocket) ->
 	end.
 
 wait_data(RequestHandler, LogHandler = {Logger, Report}, Socket) -> receive
-	{request_handler, NewRequestHandler} ->
+	{set_request_handler, NewRequestHandler} ->
 		wait_data(NewRequestHandler, LogHandler, Socket);
 	{tcp, Socket, Data} ->
 		Logger:Report(?RequestLog(Data)),
