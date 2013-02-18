@@ -42,10 +42,12 @@ accept(HttpServer, RequestHandler, LogHandler, LSocket) ->
 		{ok, Socket} ->
 			gen_server:cast(HttpServer, accept),
 			wait_data(RequestHandler, LogHandler, Socket);
-		{error, closed} -> io:format("TCP closed~n", [])
+		{error, closed} -> io:format("TCP closed at accept~n", [])
 	end.
 
 wait_data(RequestHandler, LogHandler = {Logger, Report}, Socket) -> receive
+	{set_log_handler, NewLogHandler} ->
+		wait_data(RequestHandler, NewLogHandler, Socket);
 	{set_request_handler, NewRequestHandler} ->
 		wait_data(NewRequestHandler, LogHandler, Socket);
 	{tcp, Socket, Data} ->
@@ -54,7 +56,7 @@ wait_data(RequestHandler, LogHandler = {Logger, Report}, Socket) -> receive
 		handle_result(RequestHandler, LogHandler, Socket,
 			request, http_reader:read(Data, WaitMoreDataFun)),
 		ok = gen_tcp:close(Socket);
-	{tcp_closed, Socket} -> io:format("TCP closed~n", []);
+	{tcp_closed, Socket} -> io:format("TCP closed at receive~n", []);
 	{tcp_error, Socket, Reason} -> io:format("TCP error: ~p~n", [Reason])
 end.
 

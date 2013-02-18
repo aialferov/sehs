@@ -10,7 +10,5 @@
 
 -export([start/2, stop/1]).
 
-start(_StartType, _StartArgs) -> http_server_sup:start_link(
-	utils:get_env([config_file, config, request_handler, log_handler])).
-
+start(_StartType, StartArgs) -> http_server_sup:start_link(StartArgs).
 stop(_State) -> ok.

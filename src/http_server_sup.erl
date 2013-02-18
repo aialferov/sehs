@@ -14,6 +14,6 @@
 start_link(Args) -> supervisor:start_link(?MODULE, Args).
 
 init(Args) -> {ok, {{one_for_one, 1, 10}, [
-	{http_server, {http_server, start_link, [Args]},
+	{http_server, {http_server, start_link, Args},
 		permanent, infinity, worker, [http_server]}
 ]}}.
