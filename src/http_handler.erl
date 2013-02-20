@@ -10,7 +10,8 @@
 
 -include("http_server_logs.hrl").
 
--define(Server, "Server: " ++ app_key(id) ++ "/" ++ app_key(vsn) ++ "\r\n").
+-define(Server, "Server: " ++ utils_app:get_key(id) ++
+	"/" ++ utils_app:get_key(vsn) ++ "\r\n").
 
 -define(HttpOK(Response),
 	"HTTP/1.0 200 OK\r\n" ++ ?Server ++
@@ -80,9 +81,3 @@ handle_result(_, LogHandler, Socket, _, {error, Reason}) ->
 respond({Logger, Report}, Socket, Response) ->
 	Logger:Report(?ResponseLog(Response)),
 	gen_tcp:send(Socket, Response).
-
-app_key(Key) -> app_key(application:get_application(), {key, Key}).
-app_key({ok, Application}, {key, Key}) ->
-	app_key(application:get_key(Application, Key), ok);
-app_key({ok, Value}, ok) -> Value;
-app_key(undefined, _) -> [].

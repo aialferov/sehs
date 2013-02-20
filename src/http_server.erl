@@ -22,7 +22,7 @@
 -define(AcceptsNumber, 16).
 
 start_link() -> gen_server:start_link({local, ?MODULE}, ?MODULE,
-	utils:get_env([config, request_handler, log_handler]), []).
+	utils_app:get_env([config, request_handler, log_handler]), []).
 
 listen(Port) -> gen_server:call(?MODULE, {listen, Port}).
 close() -> gen_server:call(?MODULE, close).
