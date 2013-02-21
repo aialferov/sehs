@@ -43,7 +43,7 @@ read_post(Header, Body, ContFun) when is_list(Header) ->
 read_post({_, ContentLength}, Body, ContFun) ->
 	read_post(list_to_integer(ContentLength), Body,
 		byte_size(list_to_binary(Body)), ContFun);
-read_post(false, Body, _ContFun) -> read_query(Body, [], []).
+read_post(false, Body, _ContFun) -> utils_http:read_query(Body).
 
 read_post(ContentLength, Body, BodySize, ContFun)
 	when ContentLength > BodySize
@@ -86,17 +86,6 @@ complete_header_field(FieldValue, [FieldName|Header]) ->
 	[{FieldName, lists:reverse(FieldValue)}|Header].
 
 read_request_uri("?" ++ T, Path) ->
-	{request_uri, lists:reverse(Path), read_query(T, [], [])};
+	{request_uri, lists:reverse(Path), utils_http:read_query(T)};
 read_request_uri([H|T], Path) -> read_request_uri(T, [H|Path]);
 read_request_uri([], Path) -> {request_uri, lists:reverse(Path)}.
-
-read_query("=" ++ T, Item, Query) -> read_query(T, [], [Item|Query]);
-read_query("&" ++ T, Item, Query) ->
-	read_query(T, [], complete_query_item(Item, Query));
-read_query([H|T], Item, Query) -> read_query(T, [H|Item], Query);
-read_query([], [], []) -> [];
-read_query([], Item, Query) ->
-	lists:reverse(complete_query_item(Item, Query)).
-
-complete_query_item(Item, [Field|Query]) ->
-	[{lists:reverse(Field), http_uri:decode(lists:reverse(Item))}|Query].
