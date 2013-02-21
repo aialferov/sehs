@@ -2,7 +2,7 @@
 
 project=httpserver
 snapshot_dir=../snapshots/$project
-flash_root=/media/CASPER
+flash_root=$FLASH_ROOT
 flash_dir=$flash_root/flash/projects/esbsn/$project
 filename=$project\_src_$(date +%Y%m%d_%H%M%S).tar.bz2
 
