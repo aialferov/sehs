@@ -16,27 +16,27 @@ read(Request, ContFun) when is_list(Request) ->
 read({request_line, {Method, RequestUri, Version}}, _ContFun) ->
 	result({Method, read_request_uri(RequestUri, []), Version}, [], []);
 read({request_line, RequestLine, Rest}, ContFun) ->
-	read({{request_line, RequestLine}, read_header(Rest, [], [])}, ContFun);
+	read({{request_line, RequestLine}, read_headers(Rest, [], [])}, ContFun);
 read({request_line_incomplete, Rest, Item, RequestLine}, ContFun) ->
 	read_cont(fun(MoreData) -> read(read_request_line(
 		Rest ++ MoreData, Item, RequestLine), ContFun) end, ContFun);
 
 read({{request_line, {Method, RequestUri, Version}},
-	{header, Header, Body}}, ContFun
+	{headers, Headers, Body}}, ContFun
 ) ->
 	result({Method, read_request_uri(RequestUri, []), Version},
-		Header, read_body(Header, Body, ContFun));
+		Headers, read_body(Headers, Body, ContFun));
 read({RequestLine = {request_line, _},
-	{header_incomplete, Rest, Item, Header}}, ContFun
+	{headers_incomplete, Rest, Item, Headers}}, ContFun
 ) ->
-	read_cont(fun(MoreData) -> read({RequestLine, read_header(
-		Rest ++ MoreData, Item, Header)}, ContFun) end, ContFun).
+	read_cont(fun(MoreData) -> read({RequestLine, read_headers(
+		Rest ++ MoreData, Item, Headers)}, ContFun) end, ContFun).
 
-result({Method, {request_uri, Path, Query}, Version}, Header, Body) ->
-	{ok, {{Method, Path, Version}, Header, Query, Body}}.
+result({Method, {request_uri, Path, Query}, Version}, Headers, Body) ->
+	{ok, {{Method, Path, Version}, Headers, Query, Body}}.
 
-read_body(Header, Body, ContFun) when is_list(Header) ->
-	read_body(lists:keyfind(?ContentLengthField, 1, Header), Body, ContFun);
+read_body(Headers, Body, ContFun) when is_list(Headers) ->
+	read_body(lists:keyfind(?ContentLengthField, 1, Headers), Body, ContFun);
 read_body({_, ContentLength}, Body, ContFun) ->
 	read_body(list_to_integer(ContentLength), Body,
 		byte_size(list_to_binary(Body)), ContFun);
@@ -70,17 +70,17 @@ read_request_line([], Item, RequestLine) ->
 complete_request_line(LastItem, RequestLine) ->
 	list_to_tuple(lists:reverse([lists:reverse(LastItem)|RequestLine])).
 
-read_header(": " ++ T, FieldName, Header) ->
-	read_header(T, [], [lists:reverse(FieldName)|Header]);
-read_header("\r\n\r\n" ++ T, FieldValue, Header) ->
-	{header, lists:reverse(complete_header_field(FieldValue, Header)), T};
-read_header("\r\n" ++ T, FieldValue, Header) ->
-	read_header(T, [], complete_header_field(FieldValue, Header));
-read_header([H|T], Item, Header) -> read_header(T, [H|Item], Header);
-read_header([], Item, Header) -> {header_incomplete, [], Item, Header}.
+read_headers(": " ++ T, FieldName, Headers) ->
+	read_headers(T, [], [lists:reverse(FieldName)|Headers]);
+read_headers("\r\n\r\n" ++ T, FieldValue, Headers) ->
+	{headers, lists:reverse(complete_header_field(FieldValue, Headers)), T};
+read_headers("\r\n" ++ T, FieldValue, Headers) ->
+	read_headers(T, [], complete_header_field(FieldValue, Headers));
+read_headers([H|T], Item, Headers) -> read_headers(T, [H|Item], Headers);
+read_headers([], Item, Headers) -> {headers_incomplete, [], Item, Headers}.
 
-complete_header_field(FieldValue, [FieldName|Header]) ->
-	[{FieldName, lists:reverse(FieldValue)}|Header].
+complete_header_field(FieldValue, [FieldName|Headers]) ->
+	[{FieldName, lists:reverse(FieldValue)}|Headers].
 
 read_request_uri("?" ++ T, Path) ->
 	{request_uri, lists:reverse(Path), utils_http:read_query(T)};
