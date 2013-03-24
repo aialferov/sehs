@@ -15,6 +15,6 @@
 		sehs_reader
 	]},
 	{registered, [sehs_server]},
-	{applications, [kernel, stdlib, sasl]},
+	{applications, [kernel, stdlib, sasl, utils]},
 	{mod, {sehs_app, []}}
 ]}.
