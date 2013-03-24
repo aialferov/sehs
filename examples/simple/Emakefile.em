@@ -1,1 +1,1 @@
-{deps, ["../../../httpserver"]}.
+{deps, ["../../../sehs"]}.

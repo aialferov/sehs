@@ -2,19 +2,19 @@
 %%% Created :  4 Nov 2012 by Anton I Alferov <casper@ubca-dp>
 %%%-------------------------------------------------------------------
 
-{application, httpserver, [
-	{id, "websbsn"},
-	{description, "SBSN Web Server"},
+{application, sehs, [
+	{id, "sehs"},
+	{description, "Simple Erlang based HTTP server."},
 	{vsn, "0.0.1"},
 	{modules, [
-		httpserver,
-		http_server_app,
-		http_server_sup,
-		http_server,
-		http_handler,
-		http_reader
+		sehs,
+		sehs_app,
+		sehs_sup,
+		sehs_server,
+		sehs_handler,
+		sehs_reader
 	]},
-	{registered, [http_server]},
+	{registered, [sehs_server]},
 	{applications, [kernel, stdlib, sasl]},
-	{mod, {http_server_app, []}}
+	{mod, {sehs_app, []}}
 ]}.

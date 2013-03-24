@@ -5,7 +5,7 @@
 %%% Created : 16 Oct 2012 by Anton I Alferov <casper@ubca-dp>
 %%%-------------------------------------------------------------------
 
--module(http_reader).
+-module(sehs_reader).
 -export([read/2]).
 
 -define(ContentLengthField, "Content-Length").

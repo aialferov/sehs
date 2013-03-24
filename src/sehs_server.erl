@@ -5,7 +5,7 @@
 %%% Created : 16 Oct 2012 by Anton I Alferov <casper@ubca-dp>
 %%%-------------------------------------------------------------------
 
--module(http_server).
+-module(sehs_server).
 -behaviour(gen_server).
 
 -export([start_link/0]).
@@ -16,7 +16,7 @@
 -export([init/1, terminate/2, code_change/3]).
 -export([handle_call/3, handle_cast/2, handle_info/2]).
 
--include("http_server_logs.hrl").
+-include("sehs_logs.hrl").
 
 -define(ListenOptions, [{reuseaddr, true}, {backlog, 5}]).
 -define(AcceptsNumber, 16).
@@ -96,7 +96,7 @@ spawn_accepts(Handlers, LSocket, AcceptsNumber) ->
 	[spawn_accept(Handlers, LSocket) || _ <- lists:seq(1, AcceptsNumber)].
 
 spawn_accept({RequestHandler, {Logger, Report, _}}, LSocket) ->
-	proc_lib:spawn_link(http_handler, accept,
+	proc_lib:spawn_link(sehs_handler, accept,
 		[?MODULE, RequestHandler, {Logger, Report}, LSocket]).
 
 send_log_handler(Pid, {Logger, Report, _}) ->

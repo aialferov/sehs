@@ -5,10 +5,15 @@
 %%% Created :  4 Nov 2012 by Anton I Alferov <casper@ubca-dp>
 %%%-------------------------------------------------------------------
 
--module(http_server_app).
--behaviour(application).
+-module(sehs_sup).
+-behaviour(supervisor).
 
--export([start/2, stop/1]).
+-export([start_link/1]).
+-export([init/1]).
 
-start(_StartType, StartArgs) -> http_server_sup:start_link(StartArgs).
-stop(_State) -> ok.
+start_link(Args) -> supervisor:start_link(?MODULE, Args).
+
+init(Args) -> {ok, {{one_for_one, 1, 10}, [
+	{sehs_server, {sehs_server, start_link, Args},
+		permanent, infinity, worker, [sehs_server]}
+]}}.

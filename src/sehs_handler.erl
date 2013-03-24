@@ -5,10 +5,10 @@
 %%% Created : 16 Oct 2012 by Anton I Alferov <casper@ubca-dp>
 %%%-------------------------------------------------------------------
 
--module(http_handler).
+-module(sehs_handler).
 -export([accept/4]).
 
--include("http_server_logs.hrl").
+-include("sehs_logs.hrl").
 
 -define(Server, "Server: " ++ utils_app:get_key(id) ++
 	"/" ++ utils_app:get_key(vsn) ++ "\r\n").
@@ -55,7 +55,7 @@ wait_data(RequestHandler, LogHandler = {Logger, Report}, Socket) -> receive
 		Logger:Report(?RequestLog(Data)),
 		WaitMoreDataFun = {fun wait_more_data/1, {LogHandler, Socket}},
 		handle_result(RequestHandler, LogHandler, Socket,
-			request, http_reader:read(Data, WaitMoreDataFun)),
+			request, sehs_reader:read(Data, WaitMoreDataFun)),
 		ok = gen_tcp:close(Socket);
 	{tcp_closed, Socket} -> io:format("TCP closed at receive~n", []);
 	{tcp_error, Socket, Reason} -> io:format("TCP error: ~p~n", [Reason])
