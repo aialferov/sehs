@@ -4,7 +4,7 @@
 
 {application, sehs, [
 	{id, "sehs"},
-	{description, "Simple Erlang based HTTP server."},
+	{description, "Simple Erlang based HTTP server"},
 	{vsn, "0.0.1"},
 	{modules, [
 		sehs,
