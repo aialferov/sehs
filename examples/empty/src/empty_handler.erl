@@ -7,7 +7,7 @@
 -export([handle_request/1]).
 -export([log_file/1, log_report/1]).
 
-handle_request(_) -> {ok, "OK"}.
+handle_request(_) -> {ok, "", "OK"}.
 
 log_file(_) -> ok.
 log_report(_) -> ok.

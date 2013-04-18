@@ -10,33 +10,22 @@
 
 -include("sehs_logs.hrl").
 
--define(Server, "Server: " ++ utils_app:get_key(id) ++
-	"/" ++ utils_app:get_key(vsn) ++ "\r\n").
+-define(SP, " ").
+-define(CRLF, "\r\n").
 
--define(HttpOK(Response),
-	"HTTP/1.0 200 OK\r\n" ++ ?Server ++
-	"Content-Type: text/plain; charset=\"utf-8\"\r\n" ++
-	"\r\n" ++ Response ++ "\r\n"
+-define(HttpVersion, "HTTP/1.0").
+-define(ResponseHeaders,
+	"Server: " ++ utils_app:get_key(id) ++
+		"/" ++ utils_app:get_key(vsn) ++ ?CRLF
 ).
--define(HttpError(Reason), case Reason of
-	bad_request -> ?HttpBadRequest;
-	not_found -> ?HttpNotFound;
-	method_not_allowed -> ?HttpMethodNotAllowed;
-	internal_server_error -> ?HttpInternalServerError;
-	service_unavailable -> ?HttpServiceUnavailable
+-define(Status(Code), case Code of
+	ok -> "200 OK";
+	bad_request -> "400 Bad Request";
+	not_found -> "404 Not Found";
+	method_not_allowed -> "405 Method Not Allowed";
+	internal_server_error -> "500 Internal Server Error";
+	service_unavailable -> "503 Service Unavailable"
 end).
--define(HttpBadRequest,
-	"HTTP/1.0 400 Bad Request\r\n" ++ ?Server ++ "\r\n").
--define(HttpNotFound,
-	"HTTP/1.0 404 Not Found\r\n" ++ ?Server ++ "\r\n").
--define(HttpMethodNotAllowed,
-	"HTTP/1.0 405 Method Not Allowed\r\n" ++ ?Server ++
-	"Allow: GET, POST\r\n\r\n"
-).
--define(HttpInternalServerError,
-	"HTTP/1.0 500 Internal Server Error\r\n" ++ ?Server ++ "\r\n").
--define(HttpServiceUnavailable,
-	"HTTP/1.0 503 Service Unavailable\r\n" ++ ?Server ++ "\r\n").
 
 accept(HttpServer, RequestHandler, LogHandler, LSocket) ->
 	case gen_tcp:accept(LSocket) of
@@ -68,15 +57,23 @@ wait_more_data({{Logger, Report}, Socket}) -> receive
 	{tcp_error, Socket, _Reason} -> {error, no_more_data}
 end.
 
-handle_result({RequestHandler, Handle},
-	LogHandler, Socket, request, {ok, Request})
-->
+handle_result(
+	{RequestHandler, Handle}, LogHandler,
+	Socket, request, {ok, Request}
+) ->
 	handle_result(ok, LogHandler, Socket,
 		response, RequestHandler:Handle(Request));
-handle_result(_, LogHandler, Socket, response, {ok, Response}) ->
-	respond(LogHandler, Socket, ?HttpOK(Response));
-handle_result(_, LogHandler, Socket, _, {error, Reason}) ->
-	respond(LogHandler, Socket, ?HttpError(Reason)).
+
+handle_result(_RequestHandler, LogHandler, Socket, request, {error, Reason}) ->
+	respond(LogHandler, Socket, response({Reason, [], []}));
+
+handle_result(_RequestHandler, LogHandler, Socket, response, Response) ->
+	respond(LogHandler, Socket, response(Response)).
+
+response({StatusCode, Headers, MessageBody}) ->
+	?HttpVersion ++ ?SP ++ ?Status(StatusCode) ++ ?CRLF ++
+	?ResponseHeaders ++ Headers ++ ?CRLF ++
+	case MessageBody of [] -> []; MessageBody -> MessageBody ++ ?CRLF end.
 
 respond({Logger, Report}, Socket, Response) ->
 	Logger:Report(?ResponseLog(Response)),
