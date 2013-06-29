@@ -2,20 +2,22 @@
 %%% Created : 27 Oct 2012 by Anton I Alferov <casper@ubca-dp>
 %%%-------------------------------------------------------------------
 
--module(simple_handler).
+-module(sehs_usage).
 
--export([handle_request/1, handle_request2/1]).
+-export([start/0, stop/0]).
+
+-export([handle_request/1]).
 -export([log_file/1, log_report/1]).
 
 -define(Headers, "Content-Type: text/plain; charset=\"utf-8\"\r\n").
+
+start() -> application:start(?MODULE).
+stop() -> application:stop(?MODULE).
 
 handle_request(Request) ->
 	io:format("Request: ~p~n", [Request]),
 	{ok, ?Headers, "OK"}.
 
-handle_request2(Request) ->
-	io:format("Request2: ~p~n", [Request]),
-	{ok, ?Headers, "OK"}.
-
 log_file(FileName) -> io:format("Log file: ~p~n", [FileName]).
-log_report(Report) -> io:format("INFO: ~p~n", [Report]).
+log_report(Report) ->
+	io:format("~p INFO: ~p~n", [calendar:local_time(), Report]).
