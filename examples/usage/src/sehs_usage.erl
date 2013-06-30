@@ -7,7 +7,7 @@
 -export([start/0, stop/0]).
 
 -export([handle_request/1]).
--export([log_file/1, log_report/1]).
+-export([set_log_file/1, log_report/1]).
 
 -define(Headers, "Content-Type: text/plain; charset=\"utf-8\"\r\n").
 
@@ -18,6 +18,6 @@ handle_request(Request) ->
 	io:format("Request: ~p~n", [Request]),
 	{ok, ?Headers, "OK"}.
 
-log_file(FileName) -> io:format("Log file: ~p~n", [FileName]).
+set_log_file(FileName) -> io:format("Log file: ~p~n", [FileName]).
 log_report(Report) ->
 	io:format("~p INFO: ~p~n", [calendar:local_time(), Report]).

@@ -11,95 +11,80 @@
 -export([start_link/0]).
 
 -export([listen/1, close/0]).
--export([set_log_handler/1, set_request_handler/1]).
+-export([set_handler/1]).
 
 -export([init/1, terminate/2, code_change/3]).
 -export([handle_call/3, handle_cast/2, handle_info/2]).
 
 -include("sehs_logs.hrl").
 
+-record(state, {config, handlers, listen}).
+-record(config, {port, log_file}).
+
 -define(ListenOptions, [{reuseaddr, true}, {backlog, 5}]).
 -define(AcceptsNumber, 16).
 
+-define(ConfigPaths, [[listen, port], [logging, file]]).
+
 start_link() -> gen_server:start_link({local, ?MODULE}, ?MODULE,
-	utils_app:get_env([config, request_handler, log_handler]), []).
+	utils_app:get_env([config, handlers]), []).
 
 listen(Port) -> gen_server:call(?MODULE, {listen, Port}).
 close() -> gen_server:call(?MODULE, close).
 
-set_log_handler(Handler) ->
-	gen_server:call(?MODULE, {set_log_handler, Handler}).
+set_handler(Handler) -> gen_server:call(?MODULE, {set_handler, Handler}).
 
-set_request_handler(Handler) ->
-	gen_server:call(?MODULE, {set_request_handler, Handler}).
-
-init([{config, Config},
-	{request_handler, RequestHandler}, {log_handler, LogHandler}])
-->
+init([{config, Config}, {handlers, HandlersConfig}]) ->
 	process_flag(trap_exit, true),
-	Handlers = {RequestHandler, LogHandler},
-	{Logger, Report, SetLogFile} = LogHandler,
-	{listen, {port, Port}} = lists:keyfind(listen, 1, Config),
-	{logging, {file, LogFileName}} = lists:keyfind(logging, 1, Config),
+	[Port, LogFile] = [Value || {ok, Value} <-
+		[utils_tree:leaf(Path, Config) || Path <- ?ConfigPaths]],
+	Handlers = sehs_handlers_manager:read_handlers(HandlersConfig),
 	{ok, LSocket} = gen_tcp:listen(Port, ?ListenOptions),
-	ok = Logger:SetLogFile(LogFileName),
-	ok = Logger:Report(?ListenLog(Port)),
-	{ok, [Config, Handlers, {LSocket, spawn_accepts(
-		Handlers, LSocket, ?AcceptsNumber)}]}.
+	ok = sehs_handlers_manager:set_log_file(LogFile, Handlers),
+	ok = sehs_handlers_manager:log_report(?ListenLog(Port), Handlers),
+	{ok, #state{
+		config = #config{port = Port, log_file = LogFile}, handlers = Handlers,
+		listen = spawn_accepts(Handlers, LSocket, ?AcceptsNumber)
+	}}.
 
-handle_call({set_log_handler, LogHandler}, _From,
-	[Config, {RequestHandler, _OldLogHandler}, Listen = {_LSocket, Pids}])
-->
-	[send_log_handler(Pid, LogHandler) || Pid <- Pids],
-	{reply, ok, [Config, {RequestHandler, LogHandler}, Listen]};
-handle_call({set_log_handler, LogHandler}, _From,
-	[Config, {RequestHandler, _OldLogHandler}, not_listening])
-->
-	{reply, ok, [Config, {RequestHandler, LogHandler}, not_listening]};
+handle_call({set_handler, Handler}, _From, S = #state{listen = Listen}) ->
+	send_handlers(Handler, Listen),
+	{reply, ok, S#state{handlers =
+		sehs_handlers_manager:update_handlers(Handler, S#state.handlers)}};
 
-handle_call({set_request_handler, RequestHandler}, _From,
-	[Config, {_OldRequestHandler, LogHandler}, Listen = {_LSocket, Pids}])
+handle_call({listen, Port}, _From, S = State = #state{
+	config = C, handlers = Handlers, listen = not_listening})
 ->
-	[send_request_handler(Pid, RequestHandler) || Pid <- Pids],
-	{reply, ok, [Config, {RequestHandler, LogHandler}, Listen]};
-handle_call({set_request_handler, RequestHandler}, _From,
-	[Config, {_OldRequestHandler, LogHandler}, not_listening])
-->
-	{reply, ok, [Config, {RequestHandler, LogHandler}, not_listening]};
-
-handle_call({listen, Port}, _From, [Config, Handlers, not_listening]) ->
 	case gen_tcp:listen(Port, ?ListenOptions) of
-		{ok, LSocket} -> {reply, ok, [Config, Handlers,
-			{LSocket, spawn_accepts(Handlers, LSocket, ?AcceptsNumber)}]};
-		Error -> {reply, Error, [Config, Handlers, not_listening]}
+		{ok, LSocket} -> {reply, ok, S#state{config = C#config{port = Port},
+			listen = spawn_accepts(Handlers, LSocket, ?AcceptsNumber)}};
+		Error -> {reply, Error, State}
 	end;
-handle_call({listen, _}, _From, State) ->
+handle_call({listen, _Port}, _From, State) ->
 	{reply, {error, already_listening}, State};
 
-handle_call(close, _From, [Config, Handlers, {LSocket, _}]) ->
-	{reply, gen_tcp:close(LSocket), [Config, Handlers, not_listening]};
+handle_call(close, _From, S = #state{listen = {LSocket, _Pids}}) ->
+	{reply, gen_tcp:close(LSocket), S#state{listen = not_listening}};
 handle_call(close, _From, State) -> {reply, {error, not_listening}, State}.
 
-handle_cast(accept, State = [_Config, Handlers, {LSocket, _}]) ->
-	spawn_accept(Handlers, LSocket), {noreply, State}.
+handle_cast(accept, S = State = #state{listen = {LSocket, _Pids}}) ->
+	spawn_accept(S#state.handlers, LSocket), {noreply, State}.
 
 handle_info(_Info, State) -> {noreply, State}.
 
-terminate(_Reason, [_Config, _Handlers, not_listening]) -> ok;
-terminate(_Reason, [_Config, _Handlers, {LSocket, _}]) ->
+terminate(_Reason, #state{listen = not_listening}) -> ok;
+terminate(_Reason, #state{listen = {LSocket, _Pids}}) ->
 	gen_tcp:close(LSocket).
 
 code_change(_OldVsn, State, _Extra) -> {ok, State}.
 
 
-spawn_accepts(Handlers, LSocket, AcceptsNumber) ->
-	[spawn_accept(Handlers, LSocket) || _ <- lists:seq(1, AcceptsNumber)].
+spawn_accepts(Handlers, LSocket, AcceptsNumber) -> {LSocket,
+	[spawn_accept(Handlers, LSocket) || _ <- lists:seq(1, AcceptsNumber)]}.
 
-spawn_accept({RequestHandler, {Logger, Report, _}}, LSocket) ->
-	proc_lib:spawn_link(sehs_handler, accept,
-		[?MODULE, RequestHandler, {Logger, Report}, LSocket]).
+spawn_accept(Handlers, LSocket) ->
+	proc_lib:spawn_link(sehs_handler, accept, [?MODULE, Handlers, LSocket]).
 
-send_log_handler(Pid, {Logger, Report, _}) ->
-	Pid ! {set_log_handler, {Logger, Report}}.
-send_request_handler(Pid, RequestHandler) ->
-	Pid ! {set_request_handler, RequestHandler}.
+send_handlers(_Handlers, not_listening) -> ok;
+send_handlers(Handlers, {_LSocket, Pids}) ->
+	[Pid ! {set_handlers, Handlers} || Pid <- Pids].

@@ -6,7 +6,7 @@
 %%%-------------------------------------------------------------------
 
 -module(sehs_handler).
--export([accept/4]).
+-export([accept/3]).
 
 -include("sehs_logs.hrl").
 
@@ -16,7 +16,7 @@
 -define(HttpVersion, "HTTP/1.0").
 -define(ResponseHeaders,
 	"Server: " ++ utils_app:get_key(id) ++
-		"/" ++ utils_app:get_key(vsn) ++ ?CRLF
+	"/" ++ utils_app:get_key(vsn) ++ ?CRLF
 ).
 -define(Status(Code), case Code of
 	ok -> "200 OK";
@@ -27,54 +27,49 @@
 	service_unavailable -> "503 Service Unavailable"
 end).
 
-accept(HttpServer, RequestHandler, LogHandler, LSocket) ->
+accept(HttpServer, Handlers, LSocket) ->
 	case gen_tcp:accept(LSocket) of
 		{ok, Socket} ->
 			gen_server:cast(HttpServer, accept),
-			wait_data(RequestHandler, LogHandler, Socket);
+			wait_data(Handlers, Socket);
 		{error, closed} -> io:format("TCP closed at accept~n", [])
 	end.
 
-wait_data(RequestHandler, LogHandler = {Logger, Report}, Socket) -> receive
-	{set_log_handler, NewLogHandler} ->
-		wait_data(RequestHandler, NewLogHandler, Socket);
-	{set_request_handler, NewRequestHandler} ->
-		wait_data(NewRequestHandler, LogHandler, Socket);
+wait_data(Handlers, Socket) -> receive
+	{set_handlers, Handlers} -> wait_data(Handlers, Socket);
 	{tcp, Socket, Data} ->
-		Logger:Report(?RequestLog(Data)),
-		WaitMoreDataFun = {fun wait_more_data/1, {LogHandler, Socket}},
-		handle_result(RequestHandler, LogHandler, Socket,
-			request, sehs_reader:read(Data, WaitMoreDataFun)),
+		sehs_handlers_manager:log_report(?RequestLog(Data), Handlers),
+		WaitMoreDataFun = {fun wait_more_data/1, {Handlers, Socket}},
+		handle_result(Handlers, Socket, request,
+			sehs_reader:read(Data, WaitMoreDataFun)),
 		ok = gen_tcp:close(Socket);
 	{tcp_closed, Socket} -> io:format("TCP closed at receive~n", []);
 	{tcp_error, Socket, Reason} -> io:format("TCP error: ~p~n", [Reason])
 end.
 
-wait_more_data({{Logger, Report}, Socket}) -> receive
+wait_more_data({Handlers, Socket}) -> receive
 	{tcp, Socket, MoreData} ->
-		Logger:Report(?MoreDataLog(MoreData)), {ok, MoreData};
+		sehs_handlers_manager:log_report(?MoreDataLog(MoreData), Handlers),
+		{ok, MoreData};
 	{tcp_closed, Socket} -> {error, no_more_data};
 	{tcp_error, Socket, _Reason} -> {error, no_more_data}
 end.
 
-handle_result(
-	{RequestHandler, Handle}, LogHandler,
-	Socket, request, {ok, Request}
-) ->
-	handle_result(ok, LogHandler, Socket,
-		response, RequestHandler:Handle(Request));
+handle_result(Handlers, Socket, request, {ok, Request}) ->
+	handle_result(Handlers, Socket, response,
+		sehs_handlers_manager:handle_request(Request, Handlers));
 
-handle_result(_RequestHandler, LogHandler, Socket, request, {error, Reason}) ->
-	respond(LogHandler, Socket, response({Reason, [], []}));
+handle_result(Handlers, Socket, request, {error, Reason}) ->
+	respond(Handlers, Socket, response({Reason, [], []}));
 
-handle_result(_RequestHandler, LogHandler, Socket, response, Response) ->
-	respond(LogHandler, Socket, response(Response)).
+handle_result(Handlers, Socket, response, Response) ->
+	respond(Handlers, Socket, response(Response)).
 
 response({StatusCode, Headers, MessageBody}) ->
 	?HttpVersion ++ ?SP ++ ?Status(StatusCode) ++ ?CRLF ++
 	?ResponseHeaders ++ Headers ++ ?CRLF ++
 	case MessageBody of [] -> []; MessageBody -> MessageBody ++ ?CRLF end.
 
-respond({Logger, Report}, Socket, Response) ->
-	Logger:Report(?ResponseLog(Response)),
+respond(Handlers, Socket, Response) ->
+	sehs_handlers_manager:log_report(?ResponseLog(Response), Handlers),
 	gen_tcp:send(Socket, Response).
