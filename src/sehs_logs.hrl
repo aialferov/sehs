@@ -5,9 +5,18 @@
 %%% Created: 07 Dec 2012 by Anton I Alferov <casper@ubca-dp>
 %%%-------------------------------------------------------------------
 
--define(ListenLog(Port), "listen on " ++ integer_to_list(Port)).
+-define(Log(Text), pid_to_list(self()) ++ " " ++ io_lib:format("~p", [Text])).
 
--define(MoreDataLog(Data), pid_to_list(self()) ++ " [REQP] " ++ Data).
--define(RequestLog(Request), pid_to_list(self()) ++ " [REQ] " ++ Request).
--define(ResponseLog(Response),
-	pid_to_list(self()) ++ " [RSP] " ++ Response).
+-define(InfoLog(Text), "[INFO] " ++ ?Log(Text)).
+-define(ErrorLog(Text), "[ERROR] " ++ ?Log(Text)).
+
+-define(ListenLog(Port), ?InfoLog("listen on " ++ integer_to_list(Port))).
+
+-define(MoreDataLog(Data), ?InfoLog("[REQP] " ++ Data)).
+-define(RequestLog(Request), ?InfoLog("[REQ] " ++ Request)).
+-define(ResponseLog(Response), ?InfoLog("[RSP] " ++ Response)).
+
+-define(ClosedAtAcceptLog, ?InfoLog("closed at accept")).
+-define(ClosedAtReceiveLog, ?InfoLog("closed at receive")).
+
+-define(TcpErrorLog(Reason), ?ErrorLog("[TCP] " ++ Reason)).

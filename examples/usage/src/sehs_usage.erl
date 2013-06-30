@@ -18,6 +18,5 @@ handle_request(Request) ->
 	io:format("Request: ~p~n", [Request]),
 	{ok, ?Headers, "OK"}.
 
-set_log_file(FileName) -> io:format("Log file: ~p~n", [FileName]).
-log_report(Report) ->
-	io:format("~p INFO: ~p~n", [calendar:local_time(), Report]).
+set_log_file(FileName) -> io:format("Set log file: ~p~n", [FileName]).
+log_report(Report) -> io:format("~p ~s~n", [calendar:local_time(), Report]).

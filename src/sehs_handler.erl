@@ -32,24 +32,23 @@ accept(HttpServer, Handlers, LSocket) ->
 		{ok, Socket} ->
 			gen_server:cast(HttpServer, accept),
 			wait_data(Handlers, Socket);
-		{error, closed} -> io:format("TCP closed at accept~n", [])
+		{error, closed} -> log(?ClosedAtAcceptLog, Handlers)
 	end.
 
 wait_data(Handlers, Socket) -> receive
 	{set_handlers, NewHandlers} -> wait_data(NewHandlers, Socket);
 	{tcp, Socket, Data} ->
-		sehs_handlers_manager:log_report(?RequestLog(Data), Handlers),
-		WaitMoreDataFun = {fun wait_more_data/1, {Handlers, Socket}},
-		handle_result(Handlers, Socket, request,
-			sehs_reader:read(Data, WaitMoreDataFun)),
+		log(?RequestLog(Data), Handlers),
+		handle_result(Handlers, Socket, request, sehs_reader:read(
+			Data, {fun wait_more_data/1, {Handlers, Socket}})),
 		ok = gen_tcp:close(Socket);
-	{tcp_closed, Socket} -> io:format("TCP closed at receive~n", []);
-	{tcp_error, Socket, Reason} -> io:format("TCP error: ~p~n", [Reason])
+	{tcp_closed, Socket} -> log(?ClosedAtReceiveLog, Handlers);
+	{tcp_error, Socket, Reason} -> log(?TcpErrorLog(Reason), Handlers)
 end.
 
 wait_more_data({Handlers, Socket}) -> receive
 	{tcp, Socket, MoreData} ->
-		sehs_handlers_manager:log_report(?MoreDataLog(MoreData), Handlers),
+		log(?MoreDataLog(MoreData), Handlers),
 		{ok, MoreData};
 	{tcp_closed, Socket} -> {error, no_more_data};
 	{tcp_error, Socket, _Reason} -> {error, no_more_data}
@@ -71,5 +70,7 @@ response({StatusCode, Headers, MessageBody}) ->
 	case MessageBody of [] -> []; MessageBody -> MessageBody ++ ?CRLF end.
 
 respond(Handlers, Socket, Response) ->
-	sehs_handlers_manager:log_report(?ResponseLog(Response), Handlers),
+	log(?ResponseLog(Response), Handlers),
 	gen_tcp:send(Socket, Response).
+
+log(Text, Handlers) -> sehs_handlers_manager:log_report(Text, Handlers).
