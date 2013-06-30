@@ -10,9 +10,10 @@
 		sehs,
 		sehs_app,
 		sehs_sup,
+		sehs_reader,
 		sehs_server,
 		sehs_handler,
-		sehs_reader
+		sehs_handlers_manager
 	]},
 	{registered, [sehs_server]},
 	{applications, [kernel, stdlib, sasl, utils]},
