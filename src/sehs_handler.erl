@@ -36,7 +36,7 @@ accept(HttpServer, Handlers, LSocket) ->
 	end.
 
 wait_data(Handlers, Socket) -> receive
-	{set_handlers, Handlers} -> wait_data(Handlers, Socket);
+	{set_handlers, NewHandlers} -> wait_data(NewHandlers, Socket);
 	{tcp, Socket, Data} ->
 		sehs_handlers_manager:log_report(?RequestLog(Data), Handlers),
 		WaitMoreDataFun = {fun wait_more_data/1, {Handlers, Socket}},

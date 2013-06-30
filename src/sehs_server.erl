@@ -48,9 +48,8 @@ init([{config, Config}, {handlers, HandlersConfig}]) ->
 	}}.
 
 handle_call({set_handler, Handler}, _From, S = #state{listen = Listen}) ->
-	send_handlers(Handler, Listen),
-	{reply, ok, S#state{handlers =
-		sehs_handlers_manager:update_handlers(Handler, S#state.handlers)}};
+	{reply, ok, S#state{handlers = send_handlers(sehs_handlers_manager:
+		update_handlers(Handler, S#state.handlers), Listen)}};
 
 handle_call({listen, Port}, _From, S = State = #state{
 	config = C, handlers = Handlers, listen = not_listening})
@@ -67,9 +66,12 @@ handle_call(close, _From, S = #state{listen = {LSocket, _Pids}}) ->
 	{reply, gen_tcp:close(LSocket), S#state{listen = not_listening}};
 handle_call(close, _From, State) -> {reply, {error, not_listening}, State}.
 
-handle_cast(accept, S = State = #state{listen = {LSocket, _Pids}}) ->
-	spawn_accept(S#state.handlers, LSocket), {noreply, State}.
+handle_cast(accept, S = #state{listen = {LSocket, Pids}}) ->
+	{noreply, S#state{listen = {LSocket,
+		[spawn_accept(S#state.handlers, LSocket)|Pids]}}}.
 
+handle_info({'EXIT', Pid, _Reason}, S = #state{listen = {LSocket, Pids}}) ->
+	{noreply, S#state{listen = {LSocket, lists:delete(Pid, Pids)}}};
 handle_info(_Info, State) -> {noreply, State}.
 
 terminate(_Reason, #state{listen = not_listening}) -> ok;
@@ -85,6 +87,6 @@ spawn_accepts(Handlers, LSocket, AcceptsNumber) -> {LSocket,
 spawn_accept(Handlers, LSocket) ->
 	proc_lib:spawn_link(sehs_handler, accept, [?MODULE, Handlers, LSocket]).
 
-send_handlers(_Handlers, not_listening) -> ok;
+send_handlers(Handlers, not_listening) -> Handlers;
 send_handlers(Handlers, {_LSocket, Pids}) ->
-	[Pid ! {set_handlers, Handlers} || Pid <- Pids].
+	[Pid ! {set_handlers, Handlers} || Pid <- Pids], Handlers.
