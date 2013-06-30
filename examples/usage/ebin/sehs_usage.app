@@ -10,6 +10,7 @@
 		sehs,
 		sehs_app,
 		sehs_sup,
+		sehs_usage,
 		sehs_reader,
 		sehs_server,
 		sehs_handler,
