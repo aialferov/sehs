@@ -27,6 +27,8 @@
 	service_unavailable -> "503 Service Unavailable"
 end).
 
+-define(CrashResponse, {internal_server_error, [], []}).
+
 accept(HttpServer, Handlers, LSocket) ->
 	case gen_tcp:accept(LSocket) of
 		{ok, Socket} ->
@@ -56,13 +58,15 @@ end.
 
 handle_result(Handlers, Socket, request, {ok, Request}) ->
 	handle_result(Handlers, Socket, response,
-		sehs_handlers_manager:handle_request(Request, Handlers));
+		try handle_request(Request, Handlers) of Response -> {ok, Response}
+		catch _:Reason -> {{error, Reason}, ?CrashResponse} end
+	);
 
 handle_result(Handlers, Socket, request, {error, Reason}) ->
 	respond(Handlers, Socket, response({Reason, [], []}));
 
-handle_result(Handlers, Socket, response, Response) ->
-	respond(Handlers, Socket, response(Response)).
+handle_result(Handlers, Socket, response, {Result, Response}) ->
+	respond(Handlers, Socket, response(Response)), result(Result).
 
 response({StatusCode, Headers, MessageBody}) ->
 	?HttpVersion ++ ?SP ++ ?Status(StatusCode) ++ ?CRLF ++
@@ -73,4 +77,9 @@ respond(Handlers, Socket, Response) ->
 	log(?ResponseLog(Response), Handlers),
 	gen_tcp:send(Socket, Response).
 
+result(ok) -> ok;
+result({error, Reason}) -> exit({Reason, erlang:get_stacktrace()}).
+
 log(Text, Handlers) -> sehs_handlers_manager:log_report(Text, Handlers).
+handle_request(Request, Handlers) ->
+	sehs_handlers_manager:handle_request(Request, Handlers).
