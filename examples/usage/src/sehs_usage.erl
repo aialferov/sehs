@@ -6,6 +6,9 @@
 
 -export([start/0, stop/0]).
 
+-export([listen/1, close/0]).
+-export([set_handler/1]).
+
 -export([handle_request/1]).
 -export([set_log_file/1, log_report/1]).
 
@@ -13,6 +16,11 @@
 
 start() -> application:start(?MODULE).
 stop() -> application:stop(?MODULE).
+
+listen(Port) -> gen_server:call(?MODULE, {listen, Port}).
+close() -> gen_server:call(?MODULE, close).
+
+set_handler(Handler) -> gen_server:call(?MODULE, {set_handler, Handler}).
 
 handle_request(Request) ->
 	io:format("Request: ~p~n", [Request]),

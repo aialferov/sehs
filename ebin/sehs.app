@@ -15,7 +15,5 @@
 		sehs_handler,
 		sehs_handlers_manager
 	]},
-	{registered, [sehs_server]},
-	{applications, [kernel, stdlib, sasl, utils]},
-	{mod, {sehs_app, []}}
+	{applications, [kernel, stdlib, sasl, utils]}
 ]}.

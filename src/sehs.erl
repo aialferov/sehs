@@ -6,12 +6,7 @@
 %%%-------------------------------------------------------------------
 
 -module(sehs).
-
 -export([start/0, stop/0]).
--export([listen/1, close/0]).
 
 start() -> application:start(?MODULE).
 stop() -> application:stop(?MODULE).
-
-listen(Port) -> sehs_server:listen(Port).
-close() -> sehs_server:close().
