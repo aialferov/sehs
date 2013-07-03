@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% Created : 29 Jun 2012 by Anton I Alferov <casper@ubca-dp>
+%%% Created : 29 Jun 2013 by Anton I Alferov <casper@ubca-dp>
 %%%-------------------------------------------------------------------
 
 {application, sehs_usage, [
