@@ -82,4 +82,4 @@ result({error, Reason}) -> exit({Reason, erlang:get_stacktrace()}).
 
 log(Text, Handlers) -> sehs_handlers_manager:log_report(Text, Handlers).
 handle_request(Request, Handlers) ->
-	sehs_handlers_manager:handle_request(Request, Handlers).
+	sehs_handlers_manager:handle_request(self(), Request, Handlers).

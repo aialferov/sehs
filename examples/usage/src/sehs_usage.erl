@@ -9,7 +9,7 @@
 -export([listen/1, close/0]).
 -export([set_handler/1]).
 
--export([handle_request/1]).
+-export([handle_request/2]).
 -export([set_log_file/1, log_report/1]).
 
 -define(Headers, "Content-Type: text/plain; charset=\"utf-8\"\r\n").
@@ -22,8 +22,8 @@ close() -> gen_server:call(?MODULE, close).
 
 set_handler(Handler) -> gen_server:call(?MODULE, {set_handler, Handler}).
 
-handle_request(Request) ->
-	io:format("Request: ~p~n", [Request]),
+handle_request(Rid, Request) ->
+	io:format("Request: ~p ~p~n", [Rid, Request]),
 	{ok, ?Headers, "OK"}.
 
 set_log_file(FileName) -> io:format("Set log file: ~p~n", [FileName]).

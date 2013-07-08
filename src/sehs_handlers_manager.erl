@@ -8,7 +8,7 @@
 -module(sehs_handlers_manager).
 
 -export([read_handlers/1, update_handlers/2]).
--export([handle_request/2]).
+-export([handle_request/3]).
 -export([set_log_file/2, log_report/2]).
 
 -record(handlers, {request, log}).
@@ -23,8 +23,8 @@ update_handlers(Rh = #request_handler{}, H = _Handlers) ->
 	H#handlers{request = Rh};
 update_handlers(Lh = #log_handler{}, H = _Handlers) -> H#handlers{log = Lh}.
 
-handle_request(Request, #handlers{request = R}) ->
-	(R#request_handler.module):(R#request_handler.handle)(Request).
+handle_request(Rid, Request, #handlers{request = R}) ->
+	(R#request_handler.module):(R#request_handler.handle)(Rid, Request).
 
 set_log_file(File, #handlers{log = L}) ->
 	(L#log_handler.module):(L#log_handler.set_file)(File).
