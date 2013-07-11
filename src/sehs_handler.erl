@@ -40,7 +40,7 @@ accept(HttpServer, Handlers, LSocket) ->
 wait_data(Handlers, Socket) -> receive
 	{set_handlers, NewHandlers} -> wait_data(NewHandlers, Socket);
 	{tcp, Socket, Data} ->
-		log(?RequestLog(Data), Handlers),
+		log(?RequestLog(peername(Socket), Data), Handlers),
 		handle_result(Handlers, Socket, request, sehs_reader:read(
 			Data, {fun wait_more_data/1, {Handlers, Socket}})),
 		ok = gen_tcp:close(Socket);
@@ -83,3 +83,8 @@ result({error, Reason}) -> exit({Reason, erlang:get_stacktrace()}).
 log(Text, Handlers) -> sehs_handlers_manager:log_report(Text, Handlers).
 handle_request(Request, Handlers) ->
 	sehs_handlers_manager:handle_request(self(), Request, Handlers).
+
+peername(Socket) -> read_peername(inet:peername(Socket)).
+read_peername({ok, {Address, Port}}) ->
+	inet_parse:ntoa(Address) ++ ":" ++ integer_to_list(Port);
+read_peername({error, _Reason}) -> [].

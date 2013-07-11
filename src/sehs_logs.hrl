@@ -13,7 +13,8 @@
 -define(ListenLog(Port), ?InfoLog("listen on " ++ integer_to_list(Port))).
 
 -define(MoreDataLog(Data), ?InfoLog("[REQP] " ++ Data)).
--define(RequestLog(Request), ?InfoLog("[REQ] " ++ Request)).
+-define(RequestLog(Peer, Request),
+	?InfoLog("[REQ] [" ++ Peer ++ "] " ++ Request)).
 -define(ResponseLog(Response), ?InfoLog("[RSP] " ++ Response)).
 
 -define(ClosedAtAcceptLog, ?InfoLog("closed at accept")).
