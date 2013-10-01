@@ -9,11 +9,11 @@
 
 -export([read_handlers/1, update_handlers/2]).
 -export([handle_request/3]).
--export([set_log_file/2, log_report/2]).
+-export([log_report/2, log_set_file/2]).
 
 -record(handlers, {request, log}).
 -record(request_handler, {module, handle}).
--record(log_handler, {module, set_file, report}).
+-record(log_handler, {module, report, set_file}).
 
 read_handlers(Handlers) -> #handlers{
 	request = lists:keyfind(request_handler, 1, Handlers),
@@ -26,8 +26,8 @@ update_handlers(Lh = #log_handler{}, H = _Handlers) -> H#handlers{log = Lh}.
 handle_request(Rid, Request, #handlers{request = R}) ->
 	(R#request_handler.module):(R#request_handler.handle)(Rid, Request).
 
-set_log_file(File, #handlers{log = L}) ->
-	(L#log_handler.module):(L#log_handler.set_file)(File).
+log_report({Type, Text}, #handlers{log = L}) ->
+	(L#log_handler.module):(L#log_handler.report)(Type, Text).
 
-log_report(Info, #handlers{log = L}) ->
-	(L#log_handler.module):(L#log_handler.report)(Info).
+log_set_file(File, #handlers{log = L}) ->
+	(L#log_handler.module):(L#log_handler.set_file)(File).

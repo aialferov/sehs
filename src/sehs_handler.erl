@@ -80,7 +80,7 @@ respond(Handlers, Socket, Response) ->
 result(ok) -> ok;
 result({error, Reason}) -> exit({Reason, erlang:get_stacktrace()}).
 
-log(Text, Handlers) -> sehs_handlers_manager:log_report(Text, Handlers).
+log(Report, Handlers) -> sehs_handlers_manager:log_report(Report, Handlers).
 handle_request(Request, Handlers) ->
 	sehs_handlers_manager:handle_request(self(), Request, Handlers).
 

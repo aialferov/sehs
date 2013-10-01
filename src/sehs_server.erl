@@ -31,7 +31,7 @@ init({Name, HandlerList, [{listen, Listen}, {logging, Logging}]}) ->
 	{ok, LogFile} = utils_lists:keyfind(file, Logging),
 	Handlers = sehs_handlers_manager:read_handlers(HandlerList),
 	{ok, LSocket} = gen_tcp:listen(Port, ?ListenOptions),
-	ok = sehs_handlers_manager:set_log_file(LogFile, Handlers),
+	ok = sehs_handlers_manager:log_set_file(LogFile, Handlers),
 	ok = sehs_handlers_manager:log_report(?ListenLog(Port), Handlers),
 	{ok, #state{
 		name = Name, handlers = Handlers,
