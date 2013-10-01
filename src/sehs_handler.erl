@@ -27,7 +27,7 @@
 	service_unavailable -> "503 Service Unavailable"
 end).
 
--define(CrashResponse, {internal_server_error, [], []}).
+-define(CrashResponse, {internal_server_error, {[], []}}).
 
 accept(HttpServer, Handlers, LSocket) ->
 	case gen_tcp:accept(LSocket) of
@@ -63,12 +63,12 @@ handle_result(Handlers, Socket, request, {ok, Request}) ->
 	);
 
 handle_result(Handlers, Socket, request, {error, Reason}) ->
-	respond(Handlers, Socket, response({Reason, [], []}));
+	respond(Handlers, Socket, response({Reason, {[], []}}));
 
 handle_result(Handlers, Socket, response, {Result, Response}) ->
 	respond(Handlers, Socket, response(Response)), result(Result).
 
-response({StatusCode, Headers, MessageBody}) ->
+response({StatusCode, {Headers, MessageBody}}) ->
 	?HttpVersion ++ ?SP ++ ?Status(StatusCode) ++ ?CRLF ++
 	?ResponseHeaders ++ Headers ++ ?CRLF ++
 	case MessageBody of [] -> []; MessageBody -> MessageBody ++ ?CRLF end.

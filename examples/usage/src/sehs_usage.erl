@@ -24,7 +24,8 @@ set_handler(Handler) -> gen_server:call(?MODULE, {set_handler, Handler}).
 
 handle_request(Rid, Request) ->
 	io:format("Request: ~p ~p~n", [Rid, Request]),
-	{ok, ?Headers, "OK"}.
+	{ok, {?Headers, "OK"}}.
 
 set_log_file(FileName) -> io:format("Set log file: ~p~n", [FileName]).
-log_report(Report) -> io:format("~p ~s~n", [calendar:local_time(), Report]).
+log_report(Report) -> io:format("~p ~ts~n",
+	[calendar:local_time(), list_to_binary(Report)]).
