@@ -13,7 +13,7 @@
 		{name, sehs_usage},
 		{handlers, [
 			{request_handler, sehs_usage, handle_request},
-			{log_handler, sehs_usage, log_report, log_set_file}
+			{log_handler, sehs_usage, log_report}
 		]}
 	]}}
 ]}.

@@ -10,7 +10,7 @@
 -export([set_handler/1]).
 
 -export([handle_request/2]).
--export([log_report/2, log_set_file/1]).
+-export([log_report/2]).
 
 -define(Headers, "Content-Type: text/plain; charset=\"utf-8\"\r\n").
 
@@ -28,8 +28,6 @@ handle_request(Rid, Request) ->
 
 log_report(Type, Report) -> io:format("~p [~s] ~ts~n",
 	[calendar:local_time(), type(Type), list_to_binary(Report)]).
-
-log_set_file(FileName) -> io:format("Set log file: ~p~n", [FileName]).
 
 type(info) -> "INFO";
 type(error) -> "ERROR".

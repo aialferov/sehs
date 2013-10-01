@@ -16,26 +16,22 @@
 -include("sehs_logs.hrl").
 
 -record(state, {name, handlers, config, listen}).
--record(config, {port, log_file}).
+-record(config, {port}).
 
 -define(ListenOptions, [{reuseaddr, true}, {backlog, 5}]).
 -define(AcceptsNumber, 16).
 
-start_link({name, Name}, {handlers, Handlers}) ->
-	gen_server:start_link({local, Name}, ?MODULE,
-		{Name, Handlers, utils_app:get_env([listen, logging])}, []).
+start_link({name, Name}, {handlers, Handlers}) -> gen_server:start_link(
+	{local, Name}, ?MODULE, {Name, Handlers, utils_app:get_env([listen])}, []).
 
-init({Name, HandlerList, [{listen, Listen}, {logging, Logging}]}) ->
+init({Name, HandlerList, [{listen, Listen}]}) ->
 	process_flag(trap_exit, true),
 	{ok, Port} = utils_lists:keyfind(port, Listen),
-	{ok, LogFile} = utils_lists:keyfind(file, Logging),
 	Handlers = sehs_handlers_manager:read_handlers(HandlerList),
 	{ok, LSocket} = gen_tcp:listen(Port, ?ListenOptions),
-	ok = sehs_handlers_manager:log_set_file(LogFile, Handlers),
 	ok = sehs_handlers_manager:log_report(?ListenLog(Port), Handlers),
 	{ok, #state{
-		name = Name, handlers = Handlers,
-		config = #config{port = Port, log_file = LogFile},
+		name = Name, handlers = Handlers, config = #config{port = Port},
 		listen = spawn_accepts(Name, Handlers, LSocket, ?AcceptsNumber)
 	}}.
 
