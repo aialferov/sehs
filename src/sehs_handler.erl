@@ -106,8 +106,7 @@ handle_result(Handlers, Socket, response, {Result, Response}) ->
 
 response({StatusCode, {Headers, MessageBody}}) ->
 	?HttpVersion ++ ?SP ++ ?Status(StatusCode) ++ ?CRLF ++
-	?ResponseHeaders ++ Headers ++ ?CRLF ++
-	case MessageBody of [] -> []; MessageBody -> MessageBody ++ ?CRLF end.
+	?ResponseHeaders ++ Headers ++ ?CRLF ++ MessageBody.
 
 respond(Handlers, Socket, Response) ->
 	log(?ResponseLog(Response), Handlers),
